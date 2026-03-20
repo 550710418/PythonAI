@@ -34,9 +34,15 @@ jobs:
       - name: Generate Gradle Wrapper 8.7
         run: /opt/gradle/gradle-8.7/bin/gradle wrapper --gradle-version 8.7 --distribution-type all
 
+      - name: Verify Wrapper
+        run: |
+          ls -la gradle/wrapper || true
+          cat gradle/wrapper/gradle-wrapper.properties || true
+
       - name: Build Debug APK
         run: |
           chmod +x gradlew
+          ./gradlew --version
           ./gradlew :app:assembleDebug --no-daemon
 
       - name: Upload APK
