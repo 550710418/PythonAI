@@ -9,7 +9,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Code
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Settings
 import android.content.Context
+import android.widget.Toast
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.Immutable
@@ -87,7 +89,8 @@ fun AppRoot() {
                     scriptText = it
                     editorJumpNonce += 1
                 },
-                onSwitchToEditor = { showEditor = true }
+                onSwitchToEditor = { showEditor = true },
+                onOpenSettings = { showConfig = true }
             )
             showConfig -> ApiConfigScreen(
                 initialBaseUrl = apiBaseUrl,
@@ -281,7 +284,8 @@ fun ChatScreen(
     apiKey: String,
     apiModel: String,
     onScriptGenerated: (String) -> Unit,
-    onSwitchToEditor: () -> Unit
+    onSwitchToEditor: () -> Unit,
+    onOpenSettings: () -> Unit
 ) {
     val messages = remember {
         mutableStateListOf(
@@ -291,62 +295,68 @@ fun ChatScreen(
     var input by remember { mutableStateOf("") }
     var loading by remember { mutableStateOf(false) }
 
-    Box(
+    Column(
         modifier = Modifier
             .fillMaxSize()
             .background(Color(0xFF0B0F1A))
     ) {
-        Column(modifier = Modifier.fillMaxSize()) {
-            TopBar(title = "Python+AI")
-            MessageList(messages = messages, modifier = Modifier.weight(1f))
-            ChatInputBar(
-                input = input,
-                onInputChange = { input = it },
-                onSend = {
-                    if (input.isNotBlank() && !loading) {
-                        val prompt = input.trim()
-                        messages.add(ChatMessage("user", prompt))
-                        input = ""
-                        loading = true
-                        generateScript(
-                            baseUrl = apiBaseUrl,
-                            apiKey = apiKey,
-                            model = apiModel,
-                            prompt = prompt,
-                            onDone = { script, error ->
-                                loading = false
-                                if (error != null) {
-                                    messages.add(ChatMessage("assistant", "请求失败：$error"))
-                                } else {
-                                    messages.add(ChatMessage("assistant", "脚本已生成，已同步到编辑器。"))
-                                    onScriptGenerated(script)
-                                }
-                            }
-                        )
-                    }
-                }
-            )
-            if (loading) {
-                LinearProgressIndicator(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 6.dp),
-                    color = Color(0xFF7CF6FF)
-                )
+        TopBar(title = "Python+AI") {
+            IconButton(onClick = onOpenSettings) {
+                Icon(imageVector = Icons.Default.Settings, contentDescription = "设置", tint = Color(0xFF9FB3FF))
             }
         }
-        FloatingActionButton(
-            onClick = onSwitchToEditor,
-            containerColor = Color(0xFF4D6CFF),
-            modifier = Modifier
-                .align(Alignment.BottomEnd)
-                .padding(20.dp)
-        ) {
-            Icon(
-                imageVector = Icons.Default.Code,
-                contentDescription = "切换编辑器",
-                tint = Color.White
+        MessageList(messages = messages, modifier = Modifier.weight(1f))
+        ChatInputBar(
+            input = input,
+            onInputChange = { input = it },
+            onSend = {
+                if (input.isNotBlank() && !loading) {
+                    val prompt = input.trim()
+                    messages.add(ChatMessage("user", prompt))
+                    input = ""
+                    loading = true
+                    generateScript(
+                        baseUrl = apiBaseUrl,
+                        apiKey = apiKey,
+                        model = apiModel,
+                        prompt = prompt,
+                        onDone = { script, error ->
+                            loading = false
+                            if (error != null) {
+                                messages.add(ChatMessage("assistant", "请求失败：$error"))
+                            } else {
+                                messages.add(ChatMessage("assistant", "脚本已生成，已同步到编辑器。"))
+                                onScriptGenerated(script)
+                            }
+                        }
+                    )
+                }
+            }
+        )
+        if (loading) {
+            LinearProgressIndicator(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 6.dp),
+                color = Color(0xFF7CF6FF)
             )
+        }
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp)
+        ) {
+            FloatingActionButton(
+                onClick = onSwitchToEditor,
+                containerColor = Color(0xFF4D6CFF),
+                modifier = Modifier.align(Alignment.CenterEnd)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Code,
+                    contentDescription = "切换编辑器",
+                    tint = Color.White
+                )
+            }
         }
     }
 }
@@ -560,6 +570,11 @@ fun EditorScreen(
             confirmButton = {
                 TextButton(onClick = {
                     showPipDialog = false
+                    val pkg = pipPkg.trim()
+                    if (pkg.isEmpty()) {
+                        Toast.makeText(context, "请输入库名", Toast.LENGTH_SHORT).show()
+                        return@TextButton
+                    }
                     if (!Python.isStarted()) {
                         Python.start(AndroidPlatform(context))
                     }
@@ -567,10 +582,11 @@ fun EditorScreen(
                     CoroutineScope(Dispatchers.IO).launch {
                         val py = Python.getInstance()
                         val runner = py.getModule("runner")
-                        val result = runner.callAttr("pip_install", pipPkg.trim()).toString()
+                        val result = runner.callAttr("pip_install", pkg).toString()
                         withContext(Dispatchers.Main) {
                             output = result
                             running = false
+                            Toast.makeText(context, "安装完成", Toast.LENGTH_SHORT).show()
                         }
                     }
                 }) { Text("安装") }
