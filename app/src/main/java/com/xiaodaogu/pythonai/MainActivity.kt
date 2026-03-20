@@ -488,14 +488,20 @@ fun EditorScreen(
             }
         }
 
-        CodeEditorView(
-            code = scriptText,
-            onCodeChange = onScriptChange,
+        OutlinedTextField(
+            value = scriptText,
+            onValueChange = onScriptChange,
             modifier = Modifier
                 .weight(1f)
                 .fillMaxWidth()
                 .padding(12.dp),
-            jumpNonce = jumpNonce
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedBorderColor = Color(0xFF4D6CFF),
+                unfocusedBorderColor = Color(0xFF2C3B5E),
+                focusedTextColor = Color(0xFFEAF0FF),
+                unfocusedTextColor = Color(0xFFEAF0FF),
+                cursorColor = Color(0xFF7CF6FF)
+            )
         )
 
         if (running) {
