@@ -30,6 +30,10 @@ jobs:
           curl -sL https://services.gradle.org/distributions/gradle-8.7-bin.zip -o /tmp/gradle.zip
           unzip -q /tmp/gradle.zip -d /opt/gradle
           echo "/opt/gradle/gradle-8.7/bin" >> $GITHUB_PATH
+          /opt/gradle/gradle-8.7/bin/gradle -v
+
+      - name: Show Gradle Version
+        run: /opt/gradle/gradle-8.7/bin/gradle -v
 
       - name: Build Debug APK
         run: /opt/gradle/gradle-8.7/bin/gradle :app:assembleDebug
