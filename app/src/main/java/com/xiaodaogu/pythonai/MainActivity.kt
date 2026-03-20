@@ -620,15 +620,12 @@ fun generateScript(
         .build()
     val bodyJson = JSONObject().apply {
         put("model", model.ifBlank { "gpt-5.4" })
-        put("messages", listOf(
-            mapOf("role" to "system", "content" to "你是资深Python开发助手，输出可运行代码。"),
-            mapOf("role" to "user", "content" to prompt)
-        ))
+        put("input", prompt)
         put("temperature", 0.2)
     }
     val reqBody = bodyJson.toString().toRequestBody("application/json".toMediaType())
     val req = Request.Builder()
-        .url(baseUrl.trimEnd('/') + "/chat/completions")
+        .url(baseUrl.trimEnd('/') + "/responses")
         .addHeader("Authorization", "Bearer $apiKey")
         .addHeader("Content-Type", "application/json")
         .post(reqBody)
@@ -643,10 +640,16 @@ fun generateScript(
                     return@use
                 }
                 val json = JSONObject(body)
-                val content = json.getJSONArray("choices")
-                    .getJSONObject(0)
-                    .getJSONObject("message")
-                    .getString("content")
+                val content = if (json.has("output_text")) {
+                    json.getString("output_text")
+                } else if (json.has("choices")) {
+                    json.getJSONArray("choices")
+                        .getJSONObject(0)
+                        .getJSONObject("message")
+                        .getString("content")
+                } else {
+                    body
+                }
                 withContext(Dispatchers.Main) { onDone(content, null) }
             }
         } catch (e: Exception) {
