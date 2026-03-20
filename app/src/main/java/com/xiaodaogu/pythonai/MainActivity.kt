@@ -32,6 +32,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.delay
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -462,7 +463,10 @@ fun EditorScreen(
     var output by remember { mutableStateOf("") }
     var running by remember { mutableStateOf(false) }
     var showPipDialog by remember { mutableStateOf(false) }
+    var showPipProgress by remember { mutableStateOf(false) }
+    var pipLog by remember { mutableStateOf("") }
     var pipPkg by remember { mutableStateOf("") }
+    var showRunResult by remember { mutableStateOf(false) }
 
     Column(
         modifier = Modifier
@@ -479,6 +483,7 @@ fun EditorScreen(
                         Python.start(AndroidPlatform(context))
                     }
                     running = true
+                    showRunResult = true
                     CoroutineScope(Dispatchers.IO).launch {
                         val py = Python.getInstance()
                         val runner = py.getModule("runner")
@@ -578,14 +583,16 @@ fun EditorScreen(
                     if (!Python.isStarted()) {
                         Python.start(AndroidPlatform(context))
                     }
-                    running = true
+                    showPipProgress = true
+                    pipLog = "正在安装 $pkg ...\n"
                     CoroutineScope(Dispatchers.IO).launch {
                         val py = Python.getInstance()
                         val runner = py.getModule("runner")
                         val result = runner.callAttr("pip_install", pkg).toString()
                         withContext(Dispatchers.Main) {
-                            output = result
-                            running = false
+                            pipLog += "\n" + result
+                            delay(800)
+                            showPipProgress = false
                             Toast.makeText(context, "安装完成", Toast.LENGTH_SHORT).show()
                         }
                     }
@@ -595,6 +602,49 @@ fun EditorScreen(
                 TextButton(onClick = { showPipDialog = false }) { Text("取消") }
             }
         )
+    }
+
+    if (showPipProgress) {
+        Dialog(onDismissRequest = { /* block */ }) {
+            Surface(
+                shape = RoundedCornerShape(12.dp),
+                color = Color(0xFF121B2F)
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Text("安装进度", color = Color(0xFFEAF0FF), fontWeight = FontWeight.Bold)
+                    Spacer(Modifier.height(8.dp))
+                    Text(pipLog, color = Color(0xFFB8C7FF), fontSize = 12.sp)
+                }
+            }
+        }
+    }
+
+    if (showRunResult) {
+        Dialog(onDismissRequest = { showRunResult = false }) {
+            Surface(
+                modifier = Modifier.fillMaxSize(),
+                color = Color(0xFF0B0F1A)
+            ) {
+                Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text("运行结果", color = Color(0xFFEAF0FF), fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                        TextButton(onClick = { showRunResult = false }) {
+                            Text("关闭", color = Color(0xFF9FB3FF))
+                        }
+                    }
+                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        text = output.ifBlank { "(无输出)" },
+                        color = Color(0xFFB8C7FF),
+                        fontSize = 12.sp
+                    )
+                }
+            }
+        }
     }
 }
 
