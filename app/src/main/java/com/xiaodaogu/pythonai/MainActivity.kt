@@ -650,26 +650,19 @@ fun testConnection(
     val client = OkHttpClient.Builder()
         .callTimeout(20, TimeUnit.SECONDS)
         .build()
-    val bodyJson = JSONObject().apply {
-        put("model", model.ifBlank { "gpt-5.4" })
-        put("messages", listOf(
-            mapOf("role" to "user", "content" to "ping")
-        ))
-    }
-    val reqBody = bodyJson.toString().toRequestBody("application/json".toMediaType())
     val req = Request.Builder()
-        .url(baseUrl.trimEnd('/') + "/chat/completions")
+        .url(baseUrl.trimEnd('/') + "/models")
         .addHeader("Authorization", "Bearer $apiKey")
-        .addHeader("Content-Type", "application/json")
-        .post(reqBody)
+        .get()
         .build()
 
     CoroutineScope(Dispatchers.IO).launch {
         try {
             client.newCall(req).execute().use { resp ->
+                val body = resp.body?.string().orEmpty()
                 withContext(Dispatchers.Main) {
                     if (!resp.isSuccessful) {
-                        onDone(false, "HTTP ${resp.code}")
+                        onDone(false, "HTTP ${resp.code}: ${body.take(200)}")
                     } else {
                         onDone(true, null)
                     }
