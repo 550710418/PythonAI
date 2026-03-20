@@ -25,13 +25,14 @@ jobs:
         run: |
           sdkmanager "platforms;android-34" "build-tools;34.0.0"
 
-      - name: Set up Gradle
-        uses: gradle/actions/setup-gradle@v3
-        with:
-          gradle-version: 8.7
+      - name: Install Gradle 8.7
+        run: |
+          curl -sL https://services.gradle.org/distributions/gradle-8.7-bin.zip -o /tmp/gradle.zip
+          unzip -q /tmp/gradle.zip -d /opt/gradle
+          echo "/opt/gradle/gradle-8.7/bin" >> $GITHUB_PATH
 
       - name: Build Debug APK
-        run: gradle :app:assembleDebug
+        run: /opt/gradle/gradle-8.7/bin/gradle :app:assembleDebug
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
