@@ -624,6 +624,7 @@ fun generateScript(
             mapOf("role" to "system", "content" to "你是资深Python开发助手，输出可运行代码。"),
             mapOf("role" to "user", "content" to prompt)
         ))
+        put("temperature", 0.2)
     }
     val reqBody = bodyJson.toString().toRequestBody("application/json".toMediaType())
     val req = Request.Builder()
@@ -636,11 +637,12 @@ fun generateScript(
     CoroutineScope(Dispatchers.IO).launch {
         try {
             client.newCall(req).execute().use { resp ->
+                val body = resp.body?.string().orEmpty()
                 if (!resp.isSuccessful) {
-                    withContext(Dispatchers.Main) { onDone("", "HTTP ${resp.code}") }
+                    withContext(Dispatchers.Main) { onDone("", "HTTP ${resp.code}: ${body.take(200)}") }
                     return@use
                 }
-                val json = JSONObject(resp.body?.string().orEmpty())
+                val json = JSONObject(body)
                 val content = json.getJSONArray("choices")
                     .getJSONObject(0)
                     .getJSONObject("message")
